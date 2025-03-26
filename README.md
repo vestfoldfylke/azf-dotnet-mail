@@ -1,0 +1,1 @@
+# Azure function API for sending emails through SMTP
