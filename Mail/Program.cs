@@ -10,7 +10,7 @@ builder.ConfigureFunctionsWebApplication();
 
 builder.Logging.AddVfkLogging();
 
-builder.Services.AddScoped<IMailSender, MailSender>();
+builder.Services.AddSingleton<IMailSender, MailSender>();
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
 // builder.Services

@@ -8,6 +8,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Mail.Services;
 
+public interface IMailSender
+{
+    Task<bool> SendMail(Message message);
+}
+
 public class MailSender : IMailSender
 {
     private readonly ILogger<MailSender> _logger;
