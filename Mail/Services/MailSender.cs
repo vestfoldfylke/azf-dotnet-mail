@@ -1,6 +1,8 @@
 using System;
 using System.Net;
-using System.Net.Mail;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Mail.Contracts;
 using Microsoft.Extensions.Configuration;
@@ -10,70 +12,89 @@ namespace Mail.Services;
 
 public interface IMailSender
 {
-    Task<bool> SendMail(Message message);
+    Task<(HttpStatusCode, string)> GetMailStatus(string messageId);
+    Task<(HttpStatusCode, string)> SendMail(Message message);
 }
 
 public class MailSender : IMailSender
 {
     private readonly ILogger<MailSender> _logger;
-
-    private readonly string _smtpServer;
-    private readonly int _smtpPort;
-    private readonly NetworkCredential _smtpCredentials;
+    
+    private readonly string _apiAccessToken;
+    private readonly HttpClient _httpClient;
+    
+    private readonly JsonSerializerOptions _options = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     
     public MailSender(IConfiguration config, ILogger<MailSender> logger)
     {
         _logger = logger;
         
-        _smtpServer = config["Smtp_Server"] ?? throw new InvalidOperationException("Smtp_Server is missing in configuration");
-        _smtpPort = int.TryParse(
-            config["Smtp_Port"] ?? throw new InvalidOperationException("Smtp_Port is missing in configuration"),
-            out var port)
-            ? port
-            : 588;
-        var smtpUsername = config["Smtp_Username"] ?? throw new InvalidOperationException("Smtp_Username is missing in configuration");
-        var smtpPassword = config["Smtp_Password"] ?? throw new InvalidOperationException("Smtp_Password is missing in configuration");
-        
-        _smtpCredentials = new NetworkCredential(smtpUsername, smtpPassword);
+        var apiBaseUrl = config["API_BaseUrl"] ?? throw new InvalidOperationException("API_BaseUrl is missing in configuration");
+        _apiAccessToken = config["API_AccessToken"] ?? throw new InvalidOperationException("API_AccessToken is missing in configuration");
+
+        _httpClient = new HttpClient
+        {
+            BaseAddress = new Uri(apiBaseUrl)
+        };
     }
-    
-    public async Task<bool> SendMail(Message message)
+
+    public async Task<(HttpStatusCode, string)> GetMailStatus(string messageId)
     {
+        string url = GenerateUri($"events/messageid/{messageId}");
+
         try
         {
-            using var smtpClient = new SmtpClient(_smtpServer, _smtpPort);
-            smtpClient.Credentials = _smtpCredentials;
-            smtpClient.EnableSsl = true;
-
-            var mailMessage = new MailMessage
+            HttpResponseMessage response = await _httpClient.GetAsync(url);
+            string content = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
             {
-                From = new MailAddress(message.From),
-                Subject = message.Subject,
-                Body = message.Body
-            };
-
-            foreach (var recipient in message.Recipients)
-            {
-                mailMessage.To.Add(new MailAddress(recipient));
+                return (HttpStatusCode.OK, content);
             }
             
-            await smtpClient.SendMailAsync(mailMessage);
+            _logger.LogError(
+                "Failed to get mail status for MessageId {MessageId}. Status code: {StatusCode}. Reason: {Reason}. Content: {Content}",
+                messageId, response.StatusCode, response.ReasonPhrase, content);
+            return (response.StatusCode, content);
 
-            return true;
         }
-        catch (ArgumentOutOfRangeException ex)
+        catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Failed to initialize smtp client with Server {Server} and Port {Port}", _smtpServer, _smtpPort);
+            _logger.LogError(ex, "Error getting mail status for MessageId {MessageId}", messageId);
+            return (HttpStatusCode.InternalServerError, "Error getting mail status. Please try again later");
         }
-        catch (SmtpException ex)
-        {
-            _logger.LogError(ex, "Failed to authenticate with Server {Server} and Username: {Username}", _smtpServer, _smtpCredentials.UserName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send mail message with Server {Server} and Username: {Username}. Message: {@message}", _smtpServer, _smtpCredentials.UserName, message);
-        }
-        
-        return false;
     }
+    
+    public async Task<(HttpStatusCode, string)> SendMail(Message message)
+    {
+        string messageJson = JsonSerializer.Serialize(message, _options);
+        var payload = new StringContent(messageJson, Encoding.UTF8, "application/json");
+        string url = GenerateUri("send");
+
+        try
+        {
+            HttpResponseMessage response = await _httpClient.PostAsync(url, payload);
+            string content = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                return (HttpStatusCode.OK, content);
+            }
+            
+            _logger.LogError(
+                "Failed to send mail message. Status code: {StatusCode}. Reason: {Reason}. Content: {Content}. Message: {@Message}",
+                response.StatusCode, response.ReasonPhrase, content, message);
+            return (response.StatusCode, content);
+
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Error sending mail message: {@message}", message);
+            return (HttpStatusCode.InternalServerError, "Error sending mail message. Please try again later");
+        }
+    }
+    
+    private string GenerateUri(string endpoint) => $"{endpoint}?access_token={_apiAccessToken}";
 }

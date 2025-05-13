@@ -30,7 +30,7 @@ public class Message
     public IEnumerable<string>? ReplyTo { get; init; }
     
     [Description("Email addresses of the recipients as shown in the email")]
-    public IEnumerable<string>? To { get; init; }
+    public IEnumerable<string>? To { get; set; }
     
     [Description("Extra 'x-*' custom headers")]
     public Dictionary<string, string>? Extra { get; init; }
