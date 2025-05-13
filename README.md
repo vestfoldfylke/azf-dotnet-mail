@@ -14,17 +14,20 @@ Create a `local.settings.json` file
         "BetterStack_SourceToken": "Token",
         "BetterStack_Endpoint": "https://endpoint.com",
         "BetterStack_MinimumLevel": "Information",
-        "Smtp_Server": "server.com",
-        "Smtp_Port": 587,
-        "Smtp_Username": "username",
-        "Smtp_Password": "password"
+        "Serilog_MinimumLevel_Override_Microsoft.Hosting": "Warning",
+        "Serilog_MinimumLevel_Override_Microsoft.AspNetCore": "Warning",
+        "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
+        "API_BaseUrl": "https://www.example.com/v1/",
+        "API_AccessToken": "super secret token"
     }
 }
 ```
 
 ## Usage
 
-### Send email - POST `/api/mail`
+For full input / output documentation, please refer to the [OpenAPI documentation](https://swagger-link)
+
+### Send email - POST `/api/send`
 
 **Headers**
 ```json
@@ -37,12 +40,43 @@ Create a `local.settings.json` file
 **Body**
 ```json
 {
-  "from": "from@address.com",
+  "from": "string",
   "recipients": [
-    "to@address.com",
-    "to2@address.com"
+    "string"
   ],
-  "subject": "Subject",
-  "body": "Mail text"
+  "subject": "string",
+  "html": "string",
+  "text": "string",
+  "attachments": [
+    {
+      "data": "string",
+      "url": "string",
+      "name": "string",
+      "type": "string"
+    }
+  ],
+  "cc": [
+    "string"
+  ],
+  "replyTo": [
+    "string"
+  ],
+  "to": [
+    "string"
+  ],
+  "extra": {
+    "additionalProp1": "string",
+    "additionalProp2": "string",
+    "additionalProp3": "string"
+  }
+}
+```
+
+### Get email status - POST `/api/status/{messageId}`
+
+**Headers**
+```json
+{
+  "X-Functions-Key": "<function-key>"
 }
 ```

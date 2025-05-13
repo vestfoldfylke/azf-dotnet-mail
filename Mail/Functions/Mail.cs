@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Mail.Contracts;
@@ -29,15 +29,17 @@ public class Mail
         _mailSender = mailSender;
     }
 
-    [Function("SendMail")]
-    [OpenApiOperation(operationId: "SendMail")]
+    [Function("send")]
+    [OpenApiOperation(operationId: "send")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
     [OpenApiRequestBody("application/json", typeof(Message),
         Description = "JSON request body containing message details.")]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string),
-        Description = "The OK response message containing a JSON result")]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "application/json", bodyType: typeof(string),
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.UnprocessableEntity, contentType: "application/json", bodyType: typeof(string[]),
+        Description = "Input is not valid")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "text/plain", bodyType: typeof(string),
         Description = "Bad request")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<string, string>),
+        Description = "The OK response message")]
     public async Task<IActionResult> SendMail([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
         [FromBody] Message message)
     {
@@ -53,7 +55,7 @@ public class Mail
 
         if (!validationResult.IsValid)
         {
-            return new BadRequestObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
+            return new UnprocessableEntityObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
         }
         
         (HttpStatusCode statusCode, string result) = await _mailSender.SendMail(message);
@@ -62,26 +64,25 @@ public class Mail
             return new BadRequestObjectResult("No content returned from mail service");
         }
         
-        (JsonArray? arrayContent, JsonNode? objectContent, string? stringContent) = GetReturnContent(result);
-        var returnContent = arrayContent ?? objectContent ?? stringContent;
-        
         if (statusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError)
         {
-            return new BadRequestObjectResult(returnContent);
+            return new BadRequestObjectResult(result);
         }
+
+        var returnContent = JsonNode.Parse(result);
 
         _logger.LogInformation("Mail message sent successfully: {@result}", returnContent);
         return new JsonResult(returnContent);
     }
     
-    [Function("GetMail")]
-    [OpenApiOperation(operationId: "GetMail/{messageId}")]
+    [Function("status")]
+    [OpenApiOperation(operationId: "status/{messageId}")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string),
-        Description = "The OK response message containing message details")]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "application/json", bodyType: typeof(string),
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "text/plain", bodyType: typeof(string),
         Description = "Bad request")]
-    public async Task<IActionResult> GetMail([HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetMail/{messageId:alpha}")] HttpRequestData req, string messageId)
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), // TODO: Specify correct type (probably needs to create one that matches.....)
+        Description = "The OK response message containing message details")]
+    public async Task<IActionResult> GetStatus([HttpTrigger(AuthorizationLevel.Function, "get", Route = "status/{messageId:alpha}")] HttpRequestData req, string messageId)
     {
         _logger.LogInformation("Get mail message status for MessageId {MessageId}", messageId);
         
@@ -91,33 +92,13 @@ public class Mail
             return new BadRequestObjectResult("No content returned from mail service");
         }
         
-        (JsonArray? arrayContent, JsonNode? objectContent, string? stringContent) = GetReturnContent(result);
-        var returnContent = arrayContent ?? objectContent ?? stringContent;
-        
         if (statusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError)
         {
-            return new BadRequestObjectResult(returnContent);
+            return new BadRequestObjectResult(result);
         }
+
+        var returnContent = JsonNode.Parse(result) as JsonArray;
         
         return new JsonResult(returnContent);
-    }
-
-    private static (JsonArray? arrayContent, JsonNode? objectContent, string? stringContent) GetReturnContent(string content)
-    {
-        try
-        {
-            JsonNode? nodeContent = JsonNode.Parse(content);
-
-            return nodeContent switch
-            {
-                JsonArray arrayContent => (arrayContent, null, null),
-                JsonObject objectContent => (null, objectContent, null),
-                _ => (null, null, content)
-            };
-        }
-        catch (JsonException)
-        {
-            return (null, null, content);
-        }
     }
 }
