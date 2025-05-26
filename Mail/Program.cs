@@ -3,7 +3,7 @@ using Mail.Services;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using VFK.Extensions.Logging;
+using Vestfold.Extensions.Logging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -11,7 +11,7 @@ builder.ConfigureFunctionsWebApplication();
 
 builder.UseMiddleware<ErrorHandlingMiddleware>();
 
-builder.Logging.AddVfkLogging();
+builder.Logging.AddVestfoldLogging();
 
 builder.Services.AddSingleton<IMailSender, MailSender>();
 
