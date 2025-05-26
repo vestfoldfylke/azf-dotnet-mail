@@ -13,7 +13,7 @@ namespace Mail.Services;
 public interface IMailSender
 {
     Task<(HttpStatusCode, string)> GetMailStatus(string messageId);
-    Task<(HttpStatusCode, string)> SendMail(Message message);
+    Task<(HttpStatusCode, string)> SendMail(SmtPeterMessage message);
 }
 
 public class MailSender : IMailSender
@@ -68,7 +68,7 @@ public class MailSender : IMailSender
         }
     }
     
-    public async Task<(HttpStatusCode, string)> SendMail(Message message)
+    public async Task<(HttpStatusCode, string)> SendMail(SmtPeterMessage message)
     {
         string messageJson = JsonSerializer.Serialize(message, _options);
         var payload = new StringContent(messageJson, Encoding.UTF8, "application/json");

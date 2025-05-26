@@ -9,7 +9,13 @@ public class Message
     public required string From { get; init; }
     
     [Description("Email addresses of the recipients")]
-    public required IEnumerable<string> Recipients { get; init; }
+    public required IEnumerable<string> To { get; init; }
+    
+    [Description("Email addresses of the Cc recipients")]
+    public IEnumerable<string>? Cc { get; init; }
+    
+    [Description("Email addresses of the Bcc recipients")]
+    public IEnumerable<string>? Bcc { get; init; }
     
     [Description("Subject of the email")]
     public required string Subject { get; init; }
@@ -23,15 +29,37 @@ public class Message
     [Description("List of attachments to be sent with the email")]
     public IEnumerable<Attachment>? Attachments { get; init; }
     
-    [Description("Email addresses of the Cc recipients as shown in the email")]
-    public IEnumerable<string>? Cc { get; init; }
-    
-    [Description("Email addresses of the ReplyTo recipient (if not given, the recipient will be used)")]
-    public IEnumerable<string>? ReplyTo { get; init; }
-    
-    [Description("Email addresses of the recipients as shown in the email")]
-    public IEnumerable<string>? To { get; set; }
-    
     [Description("Extra 'x-*' custom headers")]
     public Dictionary<string, string>? Extra { get; init; }
+
+    public SmtPeterMessage GenerateSmtPeterMessage()
+    {
+        List<string> recipients = [
+            ..To
+        ];
+        
+        if (Cc != null)
+        {
+            recipients.AddRange(Cc);
+        }
+        
+        if (Bcc != null)
+        {
+            recipients.AddRange(Bcc);
+        }
+        
+        return new SmtPeterMessage
+        {
+            From = From,
+            To = To,
+            Recipients = recipients,
+            Cc = Cc ?? new List<string>(),
+            Bcc = Bcc ?? new List<string>(),
+            Subject = Subject,
+            Html = Html,
+            Text = Text,
+            Attachments = Attachments ?? new List<Attachment>(),
+            Extra = Extra ?? new Dictionary<string, string>()
+        };
+    }
 }

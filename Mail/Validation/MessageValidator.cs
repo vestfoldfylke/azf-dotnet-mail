@@ -15,16 +15,6 @@ public class MessageValidator : AbstractValidator<Message>
             .EmailAddress()
             .WithMessage("{PropertyName} has invalid email address format");
 
-        RuleFor(message => message.Recipients)
-            .NotEmpty()
-            .WithMessage("{PropertyName} field is required to have at least one recipient");
-        
-        RuleForEach(message => message.Recipients)
-            .NotEmpty()
-            .WithMessage("{PropertyName} can not have empty values")
-            .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
-
         RuleFor(message => message.Subject)
             .NotEmpty()
             .WithMessage("Subject field is required");
@@ -77,7 +67,7 @@ public class MessageValidator : AbstractValidator<Message>
             .EmailAddress()
             .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
         
-        RuleForEach(message => message.ReplyTo)
+        RuleForEach(message => message.Bcc)
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()
