@@ -1,3 +1,4 @@
+using Mail.Middleware;
 using Mail.Services;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,8 @@ using VFK.Extensions.Logging;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
+
+builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
 
