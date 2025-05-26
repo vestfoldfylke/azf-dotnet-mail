@@ -35,31 +35,23 @@ public class Message
     public SmtPeterMessage GenerateSmtPeterMessage()
     {
         List<string> recipients = [
-            ..To
+            ..To,
+            ..Cc ?? new List<string>(),
+            ..Bcc ?? new List<string>()
         ];
-        
-        if (Cc != null)
-        {
-            recipients.AddRange(Cc);
-        }
-        
-        if (Bcc != null)
-        {
-            recipients.AddRange(Bcc);
-        }
         
         return new SmtPeterMessage
         {
             From = From,
             To = To,
             Recipients = recipients,
-            Cc = Cc ?? new List<string>(),
-            Bcc = Bcc ?? new List<string>(),
+            Cc = Cc,
+            Bcc = Bcc,
             Subject = Subject,
             Html = Html,
             Text = Text,
-            Attachments = Attachments ?? new List<Attachment>(),
-            Extra = Extra ?? new Dictionary<string, string>()
+            Attachments = Attachments,
+            Extra = Extra
         };
     }
 }
