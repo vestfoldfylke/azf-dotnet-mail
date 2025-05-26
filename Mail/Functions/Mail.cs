@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Mail.Contracts;
@@ -74,9 +75,9 @@ public class Mail
     [OpenApiOperation(operationId: "status/{messageId}")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
     [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "text/plain", bodyType: typeof(string),
-        Description = "Bad request")]
-    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(string), // TODO: Specify correct type (probably needs to create one that matches.....)
-        Description = "The OK response message containing message details")]
+        Description = "Bad request (from mail provider)")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(IEnumerable<EventMessage>),
+        Description = "Message details")]
     public async Task<IActionResult> GetStatus([HttpTrigger(AuthorizationLevel.Function, "get", Route = "status/{messageId:alpha}")] HttpRequestData req, string messageId)
     {
         _logger.LogInformation("Get mail message status for MessageId {MessageId}", messageId);
@@ -92,7 +93,7 @@ public class Mail
             return new BadRequestObjectResult(result);
         }
 
-        var returnContent = JsonNode.Parse(result) as JsonArray;
+        var returnContent = JsonSerializer.Deserialize<IEnumerable<EventMessage>>(result);
         
         return new JsonResult(returnContent);
     }
