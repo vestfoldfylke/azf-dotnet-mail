@@ -13,7 +13,7 @@ namespace Mail.Services;
 public interface IMailSender
 {
     Task<(HttpStatusCode, string)> GetMailStatus(string messageId);
-    Task<(HttpStatusCode, string)> SendMail(SmtPeterMessage message);
+    Task<(HttpStatusCode, string)> SendRequest<T>(T message);
 }
 
 public class MailSender : IMailSender
@@ -68,9 +68,11 @@ public class MailSender : IMailSender
         }
     }
     
-    public async Task<(HttpStatusCode, string)> SendMail(SmtPeterMessage message)
+    private string GenerateUri(string endpoint) => $"{endpoint}?access_token={_apiAccessToken}";
+    
+    public async Task<(HttpStatusCode, string)> SendRequest<T>(T message)
     {
-        string messageJson = JsonSerializer.Serialize(message, _options);
+        var messageJson = JsonSerializer.Serialize(message, _options);
         var payload = new StringContent(messageJson, Encoding.UTF8, "application/json");
         string url = GenerateUri("send");
 
@@ -84,17 +86,15 @@ public class MailSender : IMailSender
             }
             
             _logger.LogError(
-                "Failed to send mail message. Status code: {StatusCode}. Reason: {Reason}. Content: {Content}. Message: {@Message}",
-                response.StatusCode, response.ReasonPhrase, content, message);
+                "Failed to send mail message of type {Type}. Status code: {StatusCode}. Reason: {Reason}. Content: {Content}. Message: {@Message}",
+                typeof(T).Name, response.StatusCode, response.ReasonPhrase, content, message);
             return (response.StatusCode, content);
 
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Error sending mail message: {@message}", message);
+            _logger.LogError(ex, "Error sending mail message of type {Type}: {@message}", typeof(T).Name, message);
             return (HttpStatusCode.InternalServerError, "Error sending mail message. Please try again later");
         }
     }
-    
-    private string GenerateUri(string endpoint) => $"{endpoint}?access_token={_apiAccessToken}";
 }

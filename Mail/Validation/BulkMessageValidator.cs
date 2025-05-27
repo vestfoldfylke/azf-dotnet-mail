@@ -5,9 +5,9 @@ using Mail.Contracts;
 
 namespace Mail.Validation;
 
-public class MessageValidator : AbstractValidator<Message>
+public class BulkMessageValidator : AbstractValidator<BulkMessage>
 {
-    public MessageValidator()
+    public BulkMessageValidator()
     {
         RuleFor(message => message.From)
             .NotEmpty()
@@ -15,23 +15,11 @@ public class MessageValidator : AbstractValidator<Message>
             .EmailAddress()
             .WithMessage("{PropertyName} has invalid email address format");
         
-        RuleFor(message => message.To)
+        RuleFor(message => message.BulkRecipients)
             .NotEmpty()
             .WithMessage("{PropertyName} field is required");
         
-        RuleForEach(message => message.To)
-            .NotEmpty()
-            .WithMessage("{PropertyName} can not have empty values")
-            .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
-        
-        RuleForEach(message => message.Cc)
-            .NotEmpty()
-            .WithMessage("{PropertyName} can not have empty values")
-            .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
-        
-        RuleForEach(message => message.Bcc)
+        RuleForEach(message => message.BulkRecipients)
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()

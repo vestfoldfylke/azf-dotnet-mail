@@ -44,7 +44,7 @@ public class Mail
     public async Task<IActionResult> SendMail([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
         [FromBody] Message message)
     {
-        _logger.LogInformation("Sending mail message: {@message}", message);
+        _logger.LogInformation("Sending mail message");
         
         MessageValidator validator = new();
         var validationResult = await validator.ValidateAsync(message);
@@ -53,8 +53,51 @@ public class Mail
         {
             return new UnprocessableEntityObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
         }
+
+        var smtPeterMessage = message.GenerateSmtPeterMessage();
+        (HttpStatusCode statusCode, string result) = await _mailSender.SendRequest(smtPeterMessage);
+        if (string.IsNullOrEmpty(result))
+        {
+            return new BadRequestObjectResult("No content returned from mail service");
+        }
         
-        (HttpStatusCode statusCode, string result) = await _mailSender.SendMail(message.GenerateSmtPeterMessage());
+        if (statusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError)
+        {
+            return new BadRequestObjectResult(result);
+        }
+
+        var returnContent = JsonNode.Parse(result);
+
+        _logger.LogInformation("Mail message sent successfully: {@result}", result);
+        return new JsonResult(returnContent);
+    }
+    
+    [Function("bulksend")]
+    [OpenApiOperation(operationId: "bulksend")]
+    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
+    [OpenApiRequestBody("application/json", typeof(BulkMessage),
+        Description = "JSON request body containing message details.")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.UnprocessableEntity, contentType: "application/json", bodyType: typeof(string[]),
+        Description = "Input is not valid")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, contentType: "text/plain", bodyType: typeof(string),
+        Description = "Bad request (from mail provider)")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(Dictionary<string, string>),
+        Description = "Message(s) sent successfully")]
+    public async Task<IActionResult> BulkSendMail([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
+        [FromBody] BulkMessage message)
+    {
+        _logger.LogInformation("Sending mail message: {@message}", message);
+        
+        BulkMessageValidator validator = new();
+        var validationResult = await validator.ValidateAsync(message);
+
+        if (!validationResult.IsValid)
+        {
+            return new UnprocessableEntityObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
+        }
+        
+        var smtPeterBulkMessage = message.GenerateSmtPeterBulkMessage();
+        (HttpStatusCode statusCode, string result) = await _mailSender.SendRequest(smtPeterBulkMessage);
         if (string.IsNullOrEmpty(result))
         {
             return new BadRequestObjectResult("No content returned from mail service");

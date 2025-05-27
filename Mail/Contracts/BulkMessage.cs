@@ -5,19 +5,13 @@ using HandlebarsDotNet;
 
 namespace Mail.Contracts;
 
-public class Message
+public class BulkMessage
 {
     [Description("Sender email address")]
     public required string From { get; init; }
     
-    [Description("Email addresses of the recipients")]
-    public required IEnumerable<string> To { get; init; }
-    
-    [Description("Email addresses of the Cc recipients")]
-    public IEnumerable<string>? Cc { get; init; }
-    
-    [Description("Email addresses of the Bcc recipients")]
-    public IEnumerable<string>? Bcc { get; init; }
+    [Description("Email addresses of the To recipients")]
+    public required IEnumerable<string> BulkRecipients { get; init; }
     
     [Description("Subject of the email")]
     public required string Subject { get; init; }
@@ -36,21 +30,23 @@ public class Message
     
     [Description("Data to be used in the email template")]
     public Template? Template { get; init; }
-
+    
     [Description("Whether to track clicks in the email")]
     public bool Trackclicks => false;
     
     [Description("Whether to track opens in the email. If set to true, this will rewrite image urls to track opens.")]
     public bool Trackopens => false;
 
-    public SmtPeterMessage GenerateSmtPeterMessage()
+    public SmtPeterBulkMessage GenerateSmtPeterBulkMessage()
     {
-        List<string> recipients = [
-            ..To,
-            ..Cc ?? new List<string>(),
-            ..Bcc ?? new List<string>()
-        ];
+        Dictionary<string, SmtPeterBulkRecipient> recipients = [];
 
+        foreach (var recipient in BulkRecipients)
+        {
+            var address = new System.Net.Mail.MailAddress(recipient);
+            recipients.Add(address.Address, new SmtPeterBulkRecipient{ ToAddress = recipient });
+        }
+        
         string? templateBody = null;
         if (Template != null)
         {
@@ -62,14 +58,12 @@ public class Message
             var templateGenerator = Handlebars.Compile(template);
             templateBody = templateGenerator(Template.TemplateData);
         }
-        
-        return new SmtPeterMessage
+
+        return new SmtPeterBulkMessage
         {
-            From = From,
-            To = To,
+            BulkRecipients = [],
             Recipients = recipients,
-            Cc = Cc,
-            Bcc = Bcc,
+            From = From,
             Subject = Subject,
             Html = templateBody ?? Html,
             Text = Text,
