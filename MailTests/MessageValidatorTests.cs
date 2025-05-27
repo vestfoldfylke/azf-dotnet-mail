@@ -19,11 +19,11 @@ public class MessageValidatorTests
 
         Assert.Equal(6, results.Errors.Count);
         Assert.Contains(results.Errors, error => error.PropertyName == "From");
-        Assert.Contains(results.Errors, error => error.PropertyName == "Recipients");
+        Assert.Contains(results.Errors, error => error.PropertyName == "To");
         Assert.Contains(results.Errors, error => error.PropertyName == "Subject");
         Assert.Contains(results.Errors, error => error.PropertyName == "Html");
         Assert.Contains(results.Errors, error => error.PropertyName == "Text");
-        Assert.Contains(results.Errors, error => error.PropertyName == "To");
+        Assert.Contains(results.Errors, error => error.PropertyName == "Template");
     }
     
     [Theory]
@@ -33,12 +33,12 @@ public class MessageValidatorTests
     public void Invalid_From(string from)
     {
         string[] recipients = ["bar@biz.foo"];
-        Message message = CreateMessage(
+        var message = CreateMessage(
             from,
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
-            to: [..recipients]);
+            to: [..recipients],
+            subject: "Test",
+            text: "Test",
+            html: "<p>Test</p>");
         
         MessageValidator validator = new MessageValidator();
 
@@ -51,15 +51,15 @@ public class MessageValidatorTests
     }
     
     [Fact]
-    public void Invalid_Recipients()
+    public void Invalid_To()
     {
         string[] recipients = [""];
-        Message message = CreateMessage(
+        var message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
-            to: [..recipients]);
+            to: [..recipients],
+            subject: "Test",
+            text: "Test",
+            html: "<p>Test</p>");
         
         MessageValidator validator = new MessageValidator();
 
@@ -67,8 +67,7 @@ public class MessageValidatorTests
         
         Assert.False(results.IsValid);
 
-        Assert.Equal(4, results.Errors.Count);
-        Assert.Contains(results.Errors, error => error.PropertyName.Contains("Recipients"));
+        Assert.Equal(2, results.Errors.Count);
         Assert.Contains(results.Errors, error => error.PropertyName.Contains("To"));
     }
 
@@ -82,11 +81,12 @@ public class MessageValidatorTests
     public void Invalid_Attachments(string? data, string? url, string name, string type)
     {
         string[] recipients = ["bar@biz.foo"];
-        Message message = CreateMessage(
+        var message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
+            to: [..recipients],
+            subject: "Test",
+            text: "Test",
+            html: "<p>Test</p>",
             attachments:
             [
                 new Attachment
@@ -96,8 +96,7 @@ public class MessageValidatorTests
                     Name = name,
                     Type = type
                 }
-            ],
-            to: [..recipients]);
+            ]);
         
         MessageValidator validator = new MessageValidator();
 
@@ -112,13 +111,13 @@ public class MessageValidatorTests
     public void Invalid_Cc()
     {
         string[] recipients = ["bar@biz.foo"];
-        Message message = CreateMessage(
+        var message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
-            cc: [""],
-            to: [..recipients]);
+            to: [..recipients],
+            subject: "Test",
+            text: "Test",
+            html: "<p>Test</p>",
+            cc: [""]);
         
         MessageValidator validator = new MessageValidator();
 
@@ -131,37 +130,15 @@ public class MessageValidatorTests
     }
     
     [Fact]
-    public void Invalid_ReplyTo()
-    {
-        string[] recipients = ["bar@biz.foo"];
-        Message message = CreateMessage(
-            "foo@bar.biz",
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
-            replyTo: [""],
-            to: [..recipients]);
-        
-        MessageValidator validator = new MessageValidator();
-
-        ValidationResult results = validator.Validate(message);
-        
-        Assert.False(results.IsValid);
-
-        Assert.Equal(2, results.Errors.Count);
-        Assert.Contains(results.Errors, error => error.PropertyName.Contains("ReplyTo"));
-    }
-    
-    [Fact]
     public void Invalid_Extra()
     {
         string[] recipients = ["bar@biz.foo"];
-        Message message = CreateMessage(
+        var message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
-            "Test",
-            "<p>Test</p>",
             to: [..recipients],
+            subject: "Test",
+            text: "Test",
+            html: "<p>Test</p>",
             extra: new Dictionary<string, string>
             {
                 {"foo", "bar"},
@@ -186,11 +163,10 @@ public class MessageValidatorTests
         string[] recipients = ["bar@biz.foo"];
         Message message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
-            "Test",
-            useHtml ? "<p>Test</p>" : null,
-            useText ? "Test" : null,
-            to: [..recipients]);
+            to: [..recipients],
+            subject: "Test",
+            html: useHtml ? "<p>Test</p>" : null,
+            text: useText ? "Test" : null);
 
         MessageValidator validator = new MessageValidator();
 
@@ -202,12 +178,53 @@ public class MessageValidatorTests
     }
     
     [Fact]
+    public void Minimal_Valid_Message_With_Template()
+    {
+        string[] recipients = ["bar@biz.foo"];
+        Message message = CreateMessage(
+            "foo@bar.biz",
+            to: [..recipients],
+            subject: "Test",
+            template: new Template
+            {
+                TemplateName = "vestfoldfylke",
+                TemplateData = new TemplateData
+                {
+                    Body = "<p>Test</p>",
+                    Signature = new Signature
+                    {
+                        Name = "Test"
+                    }
+                }
+            });
+
+        MessageValidator validator = new MessageValidator();
+
+        ValidationResult results = validator.Validate(message);
+        
+        var smtPeterMessage = message.GenerateSmtPeterMessage();
+        
+        Assert.True(results.IsValid);
+
+        Assert.Empty(results.Errors);
+        
+        Assert.Equal(message.To.Count(), smtPeterMessage.Recipients.Count());
+        Assert.Equal(message.From, smtPeterMessage.From);
+        Assert.Equal(message.Subject, smtPeterMessage.Subject);
+        Assert.NotEqual(message.Template!.TemplateData.Body, smtPeterMessage.Html);
+        Assert.Contains(message.Template!.TemplateData.Body, smtPeterMessage.Html);
+        Assert.Contains("Vestfold fylkeskommune", smtPeterMessage.Html);
+    }
+    
+    [Fact]
     public void Maximum_Valid_Message()
     {
         string[] recipients = ["bar@biz.foo"];
         Message message = CreateMessage(
             "foo@bar.biz",
-            [..recipients],
+            to: [..recipients],
+            cc: [..recipients],
+            bcc: [..recipients],
             "Test",
             "<p>Test</p>",
             "Test",
@@ -226,9 +243,6 @@ public class MessageValidatorTests
                     Type = "text/plain"
                 }
             ],
-            cc: [..recipients],
-            replyTo: [..recipients],
-            to: [..recipients],
             extra: new Dictionary<string, string>
             {
                 { "x-foo", "bar"},
@@ -244,20 +258,91 @@ public class MessageValidatorTests
         Assert.Empty(results.Errors);
     }
     
-    private static Message CreateMessage(string from = null!, IEnumerable<string> recipients = null!, string subject = null!,
-        string? html = null, string? text = null, IEnumerable<Attachment>? attachments = null,
-        IEnumerable<string>? cc = null, IEnumerable<string>? replyTo = null, IEnumerable<string>? to = null,
+    [Fact]
+    public void Maximum_Valid_Message_With_Template()
+    {
+        string[] recipients = ["bar@biz.foo"];
+        Message message = CreateMessage(
+            "foo@bar.biz",
+            to: [..recipients],
+            cc: [..recipients],
+            bcc: [..recipients],
+            "Test",
+            attachments:
+            [
+                new Attachment
+                {
+                    Url = "https://example.com/test.txt",
+                    Name = "Test",
+                    Type = "text/plain"
+                },
+                new Attachment
+                {
+                    Data = "SGVpc2FubiBzdmVpc2Fubg==",
+                    Name = "Test",
+                    Type = "text/plain"
+                }
+            ],
+            extra: new Dictionary<string, string>
+            {
+                { "x-foo", "bar"},
+                { "x-bar", "foo"}
+            },
+            template: new Template
+            {
+                TemplateName = "telemarkfylke",
+                TemplateData = new TemplateData
+                {
+                    Body = "<p>Test</p>",
+                    Signature = new Signature
+                    {
+                        Name = "Test",
+                        Title = "Test",
+                        Department = "Test",
+                        Company = "Test",
+                        Phone = "12345678",
+                        Mobile = "87654321",
+                        Webpage = "https://example.com"
+                    }
+                }
+            });
+
+        MessageValidator validator = new MessageValidator();
+
+        ValidationResult results = validator.Validate(message);
+        
+        var smtPeterMessage = message.GenerateSmtPeterMessage();
+        
+        Assert.True(results.IsValid);
+
+        Assert.Empty(results.Errors);
+        
+        Assert.Equal(recipients.Length * 3, smtPeterMessage.Recipients.Count());
+        Assert.Equal(message.From, smtPeterMessage.From);
+        Assert.Equal(message.Subject, smtPeterMessage.Subject);
+        Assert.NotEqual(message.Template!.TemplateData.Body, smtPeterMessage.Html);
+        Assert.Contains(message.Template!.TemplateData.Body, smtPeterMessage.Html);
+        Assert.Contains(message.Template!.TemplateData.Signature!.Phone!, smtPeterMessage.Html);
+        Assert.Contains(message.Template!.TemplateData.Signature!.Mobile!, smtPeterMessage.Html);
+        Assert.Contains(message.Template!.TemplateData.Signature!.Webpage!, smtPeterMessage.Html);
+        Assert.Contains("Telemark fylkeskommune", smtPeterMessage.Html);
+    }
+    
+    // TODO: Create tests for Template validation when implemented
+    
+    private static Message CreateMessage(string from = null!, IEnumerable<string> to = null!, IEnumerable<string>? cc = null, IEnumerable<string>? bcc = null,
+        string subject = null!, string? html = null, string? text = null, Template? template = null, IEnumerable<Attachment>? attachments = null,
         Dictionary<string, string>? extra = null) => new Message
         {
             From = from,
-            Recipients = recipients,
+            To = to,
+            Cc = cc,
+            Bcc = bcc,
             Subject = subject,
             Html = html,
             Text = text,
+            Template = template,
             Attachments = attachments,
-            Cc = cc,
-            ReplyTo = replyTo,
-            To = to,
             Extra = extra
         };
 }
