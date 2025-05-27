@@ -86,7 +86,7 @@ public class Mail
     public async Task<IActionResult> BulkSendMail([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
         [FromBody] BulkMessage message)
     {
-        _logger.LogInformation("Sending mail message: {@message}", message);
+        _logger.LogInformation("Sending bulk mail message");
         
         BulkMessageValidator validator = new();
         var validationResult = await validator.ValidateAsync(message);

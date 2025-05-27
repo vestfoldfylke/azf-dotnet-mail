@@ -21,5 +21,4 @@ public class Signature
     public string? Phone { get; init; }
     public string? Mobile { get; init; }
     public string? Webpage { get; init; }
-    public string? Virksomhet { get; init; }
 }

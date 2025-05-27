@@ -42,17 +42,15 @@ public static class Templates
            <b>{{signature.name}}</b><br />
            
            {{#if signature.title}}
-               {{signature.title}}<br />
+            {{signature.title}}<br />
            {{/if}}
            
            {{#if signature.department}}
-               {{signature.department}}<br/>
+            {{signature.department}}<br/>
            {{/if}}
            
            {{#if signature.company}}
-               {{#unless signature.virksomhet}}
-                   {{signature.company}}<br/>
-               {{/unless}}
+            {{signature.company}}<br/>
            {{/if}}
            {{#if signature.phone}}
                <br/>
@@ -73,15 +71,7 @@ public static class Templates
          <div id=""vfk_company"">
            <br>
            <img src=""https://logo.api.vestfoldfylke.no/logos/vestfold_fylkesvapen_epost.png"" alt=""Fylkesvåpen, Vestfold fylkeskommune""><br />
-           {{#if signature.virksomhet}}
-               {{#if signature.company}}
-                   <b>{{signature.company}}</b><br />
-               {{else}}
-                   <b>Vestfold fylkeskommune</b><br />
-               {{/if}}
-           {{else}}
-               <b>Vestfold fylkeskommune</b><br />
-           {{/if}}
+           <b>Vestfold fylkeskommune</b><br />
            
            {{#if signature.webpage}}
                <a href=""{{signature.webpage}}"">{{signature.webpage}}</a>
@@ -139,9 +129,7 @@ public static class Templates
         {{/if}}
         
         {{#if signature.company}}
-            {{#unless signature.virksomhet}}
-                {{signature.company}}<br/>
-            {{/unless}}
+            {{signature.company}}<br/>
         {{/if}}
         {{#if signature.phone}}
             <br/>
@@ -162,15 +150,7 @@ public static class Templates
       <div id=""tfk_company"">
         <br>
         <img src=""https://logo.api.telemarkfylke.no/logos/telemark_fylkesvapen_epost.png"" alt=""Fylkesvåpen, Telemark fylkeskommune""><br />
-        {{#if signature.virksomhet}}
-            {{#if signature.company}}
-                <b>{{signature.company}}</b><br />
-            {{else}}
-                <b>Telemark fylkeskommune</b><br />
-            {{/if}}
-        {{else}}
-            <b>Telemark fylkeskommune</b><br />
-        {{/if}}
+        <b>Telemark fylkeskommune</b><br />
         
         {{#if signature.webpage}}
             <a href=""{{signature.webpage}}"">{{signature.webpage}}</a>
