@@ -72,7 +72,7 @@ public class EventMessage
     public int TemplateId { get; init; }
     
     [Description("The time of the event (YYYY-MM-DD hh:mm:ss formatted)")]
-    public DateTime? Time { get; init; }
+    public string? Time { get; init; }
     
     [Description("The \"to\" IP address")]
     public string? To { get; init; }

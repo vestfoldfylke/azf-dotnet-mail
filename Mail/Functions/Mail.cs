@@ -136,7 +136,7 @@ public class Mail
             return new BadRequestObjectResult(result);
         }
 
-        var returnContent = JsonSerializer.Deserialize<IEnumerable<EventMessage>>(result);
+        var returnContent = JsonSerializer.Deserialize<IEnumerable<EventMessage>>(result, new JsonSerializerOptions{ PropertyNamingPolicy = JsonNamingPolicy.CamelCase});
         
         return new JsonResult(returnContent);
     }
