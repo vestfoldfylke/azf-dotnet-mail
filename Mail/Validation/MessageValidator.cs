@@ -13,7 +13,7 @@ public class MessageValidator : AbstractValidator<Message>
             .NotEmpty()
             .WithMessage("{PropertyName} field is required")
             .EmailAddress()
-            .WithMessage("{PropertyName} has invalid email address format");
+            .WithMessage("{PropertyName} address has invalid email address format");
         
         RuleFor(message => message.To)
             .NotEmpty()
@@ -23,19 +23,19 @@ public class MessageValidator : AbstractValidator<Message>
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
+            .WithMessage("{PropertyName} address '{PropertyValue}' has invalid email address format");
         
         RuleForEach(message => message.Cc)
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
+            .WithMessage("{PropertyName} address '{PropertyValue}' has invalid email address format");
         
         RuleForEach(message => message.Bcc)
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
+            .WithMessage("{PropertyName} address '{PropertyValue}' has invalid email address format");
 
         RuleFor(message => message.Subject)
             .NotEmpty()
