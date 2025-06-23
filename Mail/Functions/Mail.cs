@@ -15,6 +15,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.OpenApi.Models;
+using Vestfold.Extensions.Metrics.Services;
 using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 
 namespace Mail.Functions;
@@ -23,11 +24,16 @@ public class Mail
 {
     private readonly ILogger<Mail> _logger;
     private readonly IMailSender _mailSender;
+    private readonly IMetricsService _metricsService;
 
-    public Mail(ILogger<Mail> logger, IMailSender mailSender)
+    private readonly JsonSerializerOptions _camelCaseOptions = new JsonSerializerOptions
+        { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    public Mail(ILogger<Mail> logger, IMailSender mailSender, IMetricsService metricsService)
     {
         _logger = logger;
         _mailSender = mailSender;
+        _metricsService = metricsService;
     }
 
     [Function("send")]
@@ -51,25 +57,36 @@ public class Mail
 
         if (!validationResult.IsValid)
         {
+            _logger.LogWarning("Validation failed for message. Errors: {@Errors}", validationResult.Errors);
+            _metricsService.Count($"{Constants.MetricsPrefix}_Send", "Email requests through SMTP API", ("Result", "ValidationFailed"));
             return new UnprocessableEntityObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
         }
 
         var smtPeterMessage = message.GenerateSmtPeterMessage();
-        (HttpStatusCode statusCode, string result) = await _mailSender.SendRequest(smtPeterMessage);
+        var (statusCode, result) = await _mailSender.SendRequest(smtPeterMessage);
         if (string.IsNullOrEmpty(result))
         {
+            _logger.LogError("No content returned from mail service");
+            _metricsService.Count($"{Constants.MetricsPrefix}_Send", "Email requests through SMTP API", ("Result", "Failed"));
             return new BadRequestObjectResult("No content returned from mail service");
         }
         
         if (statusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError)
         {
+            _metricsService.Count($"{Constants.MetricsPrefix}_Send", "Email requests through SMTP API", ("Result", "Failed"));
             return new BadRequestObjectResult(result);
         }
 
-        var returnContent = JsonNode.Parse(result);
-
-        _logger.LogInformation("Mail message sent successfully: {@result}", result);
-        return new JsonResult(returnContent);
+        var jsonResult = JsonNode.Parse(result);
+        if (jsonResult is null)
+        {
+            _metricsService.Count($"{Constants.MetricsPrefix}_Send", "Email requests through SMTP API", ("Result", "Failed"));
+            return new BadRequestObjectResult("Failed to parse response from mail service");
+        }
+        
+        _metricsService.Count($"{Constants.MetricsPrefix}_Send", "Email requests through SMTP API", ("Result", "Success"));
+        _metricsService.Count($"{Constants.MetricsPrefix}_Send_Recipients", "Email sent through SMTP API", jsonResult.AsObject().Count);
+        return new JsonResult(JsonNode.Parse(result));
     }
     
     [Function("bulksend")]
@@ -93,25 +110,36 @@ public class Mail
 
         if (!validationResult.IsValid)
         {
+            _logger.LogWarning("Validation failed for bulk message. Errors: {@Errors}", validationResult.Errors);
+            _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend", "Bulk email requests through SMTP API", ("Result", "ValidationFailed"));
             return new UnprocessableEntityObjectResult(validationResult.Errors.Select(failure => failure.ErrorMessage));
         }
         
         var smtPeterBulkMessage = message.GenerateSmtPeterBulkMessage();
-        (HttpStatusCode statusCode, string result) = await _mailSender.SendRequest(smtPeterBulkMessage);
+        var (statusCode, result) = await _mailSender.SendRequest(smtPeterBulkMessage);
         if (string.IsNullOrEmpty(result))
         {
+            _logger.LogError("No content returned from mail service");
+            _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend", "Bulk email requests through SMTP API", ("Result", "Failed"));
             return new BadRequestObjectResult("No content returned from mail service");
         }
         
         if (statusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError)
         {
+            _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend", "Bulk email requests through SMTP API", ("Result", "Failed"));
             return new BadRequestObjectResult(result);
         }
 
-        var returnContent = JsonNode.Parse(result);
-
-        _logger.LogInformation("Mail message sent successfully: {@result}", result);
-        return new JsonResult(returnContent);
+        var jsonResult = JsonNode.Parse(result);
+        if (jsonResult is null)
+        {
+            _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend", "Bulk email requests through SMTP API", ("Result", "Failed"));
+            return new BadRequestObjectResult("Failed to parse response from mail service");
+        }
+        
+        _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend", "Bulk email requests through SMTP API", ("Result", "Success"));
+        _metricsService.Count($"{Constants.MetricsPrefix}_BulkSend_Recipients", "Email sent through SMTP API", jsonResult.AsObject().Count);
+        return new JsonResult(jsonResult);
     }
     
     [Function("status")]
@@ -125,7 +153,7 @@ public class Mail
     {
         _logger.LogInformation("Get mail message status for MessageId {MessageId}", messageId);
         
-        (HttpStatusCode statusCode, string result) = await _mailSender.GetMailStatus(messageId);
+        var (statusCode, result) = await _mailSender.GetMailStatus(messageId);
         if (string.IsNullOrEmpty(result))
         {
             return new BadRequestObjectResult("No content returned from mail service");
@@ -136,7 +164,7 @@ public class Mail
             return new BadRequestObjectResult(result);
         }
 
-        var returnContent = JsonSerializer.Deserialize<IEnumerable<EventMessage>>(result, new JsonSerializerOptions{ PropertyNamingPolicy = JsonNamingPolicy.CamelCase});
+        var returnContent = JsonSerializer.Deserialize<IEnumerable<EventMessage>>(result, _camelCaseOptions);
         
         return new JsonResult(returnContent);
     }
