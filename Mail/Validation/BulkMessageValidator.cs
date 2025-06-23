@@ -13,7 +13,7 @@ public class BulkMessageValidator : AbstractValidator<BulkMessage>
             .NotEmpty()
             .WithMessage("{PropertyName} field is required")
             .EmailAddress()
-            .WithMessage("{PropertyName} has invalid email address format");
+            .WithMessage("{PropertyName} address has invalid email address format");
         
         RuleFor(message => message.BulkRecipients)
             .NotEmpty()
@@ -23,7 +23,7 @@ public class BulkMessageValidator : AbstractValidator<BulkMessage>
             .NotEmpty()
             .WithMessage("{PropertyName} can not have empty values")
             .EmailAddress()
-            .WithMessage("{PropertyName} with {PropertyValue} has invalid email address format");
+            .WithMessage("{PropertyName} address '{PropertyValue}' has invalid email address format");
 
         RuleFor(message => message.Subject)
             .NotEmpty()

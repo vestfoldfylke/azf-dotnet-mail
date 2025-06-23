@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Mail.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +31,7 @@ public class MailSender : IMailSender
     public MailSender(IConfiguration config, ILogger<MailSender> logger)
     {
         _logger = logger;
-        
+
         var apiBaseUrl = config["API_BaseUrl"] ?? throw new InvalidOperationException("API_BaseUrl is missing in configuration");
         _apiAccessToken = config["API_AccessToken"] ?? throw new InvalidOperationException("API_AccessToken is missing in configuration");
 
@@ -44,12 +43,12 @@ public class MailSender : IMailSender
 
     public async Task<(HttpStatusCode, string)> GetMailStatus(string messageId)
     {
-        string url = GenerateUri($"events/messageid/{messageId}");
+        var url = GenerateUri($"events/messageid/{messageId}");
 
         try
         {
             HttpResponseMessage response = await _httpClient.GetAsync(url);
-            string content = await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
             {
                 return (HttpStatusCode.OK, content);
@@ -68,20 +67,19 @@ public class MailSender : IMailSender
         }
     }
     
-    private string GenerateUri(string endpoint) => $"{endpoint}?access_token={_apiAccessToken}";
-    
     public async Task<(HttpStatusCode, string)> SendRequest<T>(T message)
     {
         var messageJson = JsonSerializer.Serialize(message, _options);
         var payload = new StringContent(messageJson, Encoding.UTF8, "application/json");
-        string url = GenerateUri("send");
+        var url = GenerateUri("send");
 
         try
         {
             HttpResponseMessage response = await _httpClient.PostAsync(url, payload);
-            string content = await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
             {
+                _logger.LogInformation("{Type} sent successfully: {@Result}", typeof(T).Name, content);
                 return (HttpStatusCode.OK, content);
             }
             
@@ -97,4 +95,6 @@ public class MailSender : IMailSender
             return (HttpStatusCode.InternalServerError, "Error sending mail message. Please try again later");
         }
     }
+    
+    private string GenerateUri(string endpoint) => $"{endpoint}?access_token={_apiAccessToken}";
 }
