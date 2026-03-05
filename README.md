@@ -11,12 +11,12 @@ Create a `local.settings.json` file
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
         "AppName": "azf-dotnet-mail",
         "Version": "1.0.0",
-        "BetterStack_SourceToken": "Token",
-        "BetterStack_Endpoint": "https://endpoint.com",
-        "BetterStack_MinimumLevel": "Information",
-        "Serilog_MinimumLevel_Override_Microsoft_Hosting": "Warning",
-        "Serilog_MinimumLevel_Override_Microsoft_AspNetCore": "Warning",
-        "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
+        "BetterStack__SourceToken": "Token",
+        "BetterStack__Endpoint": "https://endpoint.com",
+        "BetterStack__MinimumLevel": "Information",
+        "Serilog__MinimumLevel__Override__Microsoft_Hosting": "Warning",
+        "Serilog__MinimumLevel__Override__Microsoft_AspNetCore": "Warning",
+        "Serilog__MinimumLevel__Override__OpenApiTriggerFunction": "Warning",
         "API_BaseUrl": "https://www.example.com/v1/",
         "API_AccessToken": "super secret token"
     }
