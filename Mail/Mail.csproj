@@ -4,7 +4,7 @@
         <AzureFunctionsVersion>V4</AzureFunctionsVersion>
         <OutputType>Exe</OutputType>
         <Nullable>enable</Nullable>
-        <Version>1.1.2</Version>
+        <Version>1.1.3</Version>
 
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
