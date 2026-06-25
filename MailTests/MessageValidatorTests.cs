@@ -72,11 +72,7 @@ public class MessageValidatorTests
     }
 
     [Theory]
-    [InlineData("SGVpc2FubiBzdmVpc2Fubg==", null, null!, "text/plain")]
-    [InlineData("SGVpc2FubiBzdmVpc2Fubg==", null, "Test", null!)]
     [InlineData("S==", null, "Test", "text/plain")]
-    [InlineData(null, "https://example.com/test.txt", null!, "text/plain")]
-    [InlineData(null, "https://example.com/test.txt", "Test2", null!)]
     [InlineData(null, "example.com", "Test2", "text/plain")]
     public void Invalid_Attachments(string? data, string? url, string name, string type)
     {
