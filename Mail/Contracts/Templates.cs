@@ -70,7 +70,6 @@ public static class Templates
          </div>
          <div id=""vfk_company"">
            <br>
-           <img src=""https://logo.api.vestfoldfylke.no/logos/vestfold_fylkesvapen_epost.png"" alt=""Fylkesvåpen, Vestfold fylkeskommune""><br />
            <b>Vestfold fylkeskommune</b><br />
            
            {{#if signature.webpage}}
